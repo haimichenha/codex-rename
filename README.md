@@ -16,6 +16,7 @@
 - 默认只保留最近 3 个 rename 备份
 - 记录最近 2 次重命名元数据到 `~/.codex/thread-manager/recent-renames.json`
 - 支持按备份目录回滚
+- 支持多个并行 VS Code Codex 面板：扫描各自 rollout 尾部的 `/codex rename 新标题` 并批量重命名
 
 ## 使用
 
@@ -24,6 +25,8 @@
 ```powershell
 python .\codex_thread_manager.py list --limit 5 --show-cwd
 python .\codex_thread_manager.py rename --id <SESSION_ID> --title "新标题"
+python .\codex_thread_manager.py scan-rename-commands --limit 20 --show-cwd
+python .\codex_thread_manager.py tail-rename --limit 20 --apply
 python .\codex_thread_manager.py recent --limit 2
 python .\codex_thread_manager.py rollback --backup "<BACKUP_DIR>" --dry-run
 python .\codex_thread_manager.py rollback --backup "<BACKUP_DIR>"
@@ -36,6 +39,8 @@ python .\codex_thread_manager.py --codex-home "C:\Users\you\.codex" list --limit
 ```
 
 ## 推荐的 `/codex-rename` 工作流
+
+### 单会话
 
 1. 用户输入 `/codex-rename 新标题`。
 2. 先运行：
@@ -53,6 +58,23 @@ python .\codex_thread_manager.py --codex-home "C:\Users\you\.codex" list --limit
 
 5. 输出中保留 `Backup:`、`Recent rename index:` 和 `Rollback command:`。
 6. 提醒用户 Reload Window / 重启 VS Code 刷新缓存。
+
+### 多个并行会话
+
+如果同时打开了多个 Codex 面板，不要只依赖“最近一条 thread”。推荐在每个要重命名的对话末尾各自输入一行：
+
+```text
+/codex rename 新标题
+```
+
+然后在任意一个 Codex 对话里执行 `/codex-rename`，或手动运行：
+
+```powershell
+python "<repo>\codex_thread_manager.py" scan-rename-commands --limit 20 --show-cwd
+python "<repo>\codex_thread_manager.py" tail-rename --limit 20 --apply
+```
+
+`tail-rename` 会按每个 thread 自己 rollout 尾部的用户命令解析新标题；当前标题已经一致的会跳过。
 
 复杂历史管理、标签、备注、归档建议交给 Codex History Viewer、CC Switch 等插件。
 
