@@ -1,0 +1,13 @@
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.env
+.env.*
+
+# Local Codex metadata / backups; never commit user history.
+.codex/
+thread-manager/
+recent-renames.json
+codex-thread-rename-backup-*/
