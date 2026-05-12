@@ -119,3 +119,14 @@ Available tools:
 The MCP is intentionally a thin wrapper around `codex_thread_manager.py`; it preserves backups and rollback behavior while keeping the model context small.
 
 Note: the old `prompts/codex-rename.md` slash-prompt entry was removed after MCP support was added. Codex should use the MCP tools directly instead of injecting the old long prompt context.
+
+## Skill architecture
+
+The installed Codex skill is intentionally thin:
+
+- `SKILL.md` is only the trigger/routing layer.
+- `server.py` exposes MCP tools for normal use.
+- `codex_thread_manager.py` keeps deterministic local metadata operations, backups, and rollback.
+- The old long prompt entry under `~/.codex/prompts/codex-rename.md` should stay disabled; otherwise Codex may inject the long prompt context instead of using MCP.
+
+For Codex usage, prefer the skill trigger + MCP tools. Do not recreate the old prompt-based workflow.
