@@ -117,3 +117,5 @@ Available tools:
 - `codex_rename_rollback(...)` — dry-run by default; real rollback requires `CONFIRM_CODEX_RENAME_ROLLBACK`.
 
 The MCP is intentionally a thin wrapper around `codex_thread_manager.py`; it preserves backups and rollback behavior while keeping the model context small.
+
+Note: the old `prompts/codex-rename.md` slash-prompt entry was removed after MCP support was added. Codex should use the MCP tools directly instead of injecting the old long prompt context.

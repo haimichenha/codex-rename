@@ -21,21 +21,34 @@ def _base_args(codex_home: str | None = None) -> list[str]:
     return args
 
 
-def _run(args: list[str]) -> dict[str, Any]:
-    proc = subprocess.run(
-        args,
-        text=True,
-        stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE,
-        check=False,
-    )
-    return {
-        "ok": proc.returncode == 0,
-        "returncode": proc.returncode,
-        "command": args,
-        "stdout": proc.stdout,
-        "stderr": proc.stderr,
-    }
+def _run(args: list[str], timeout_seconds: int = 25) -> dict[str, Any]:
+    try:
+        proc = subprocess.run(
+            args,
+            text=True,
+            stdin=subprocess.DEVNULL,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            check=False,
+            timeout=timeout_seconds,
+        )
+        return {
+            "ok": proc.returncode == 0,
+            "returncode": proc.returncode,
+            "command": args,
+            "stdout": proc.stdout,
+            "stderr": proc.stderr,
+        }
+    except subprocess.TimeoutExpired as exc:
+        return {
+            "ok": False,
+            "returncode": None,
+            "command": args,
+            "stdout": exc.stdout or "",
+            "stderr": exc.stderr or "",
+            "timeout_seconds": timeout_seconds,
+            "error": "codex_thread_manager.py timed out; no metadata was written by this MCP wrapper after timeout.",
+        }
 
 
 def _bounded(value: int, minimum: int, maximum: int) -> int:
