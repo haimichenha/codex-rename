@@ -81,3 +81,39 @@ python "<repo>\codex_thread_manager.py" tail-rename --limit 20 --apply
 ## 风险说明
 
 这是本地 metadata hack，不是 OpenAI 官方 VS Code UI 功能。Codex 本地存储结构未来可能变化。使用前请确认脚本输出的候选 thread 是你想改的对话，并保留备份。
+
+## MCP mode (short-context path)
+
+This repo can also run as a small MCP server so Codex/Claude/VS Code do not need to load the long prompt file.
+
+Register `server.py` as a stdio MCP named `codex-rename`:
+
+```json
+{
+  "mcpServers": {
+    "codex-rename": {
+      "type": "stdio",
+      "command": "D:\\Vs Code\\MSPM0\\lidarMSP\\.venv\\Scripts\\python.exe",
+      "args": [
+        "C:\\Users\\chenha\\.codex\\skills\\codex-rename\\server.py"
+      ],
+      "env": {
+        "PYTHONIOENCODING": "utf-8"
+      }
+    }
+  }
+}
+```
+
+Available tools:
+
+- `codex_rename_help()` — short workflow summary and confirmation tokens.
+- `codex_rename_list_threads(...)` — read-only recent thread list.
+- `codex_rename_scan_commands(...)` — read-only scan for trailing `/codex rename 新标题` commands.
+- `codex_rename_preview_tail_rename(...)` — dry-run batch rename preview.
+- `codex_rename_apply_tail_rename(...)` — write batch rename; requires `CONFIRM_CODEX_RENAME_WRITE`.
+- `codex_rename_thread(...)` — rename one thread; non-dry-run requires `CONFIRM_CODEX_RENAME_WRITE`.
+- `codex_rename_recent(...)` — read recent rename metadata.
+- `codex_rename_rollback(...)` — dry-run by default; real rollback requires `CONFIRM_CODEX_RENAME_ROLLBACK`.
+
+The MCP is intentionally a thin wrapper around `codex_thread_manager.py`; it preserves backups and rollback behavior while keeping the model context small.

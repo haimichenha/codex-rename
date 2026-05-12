@@ -1,0 +1,14 @@
+{
+  "mcpServers": {
+    "codex-rename": {
+      "type": "stdio",
+      "command": "D:\\Vs Code\\MSPM0\\lidarMSP\\.venv\\Scripts\\python.exe",
+      "args": [
+        "C:\\Users\\chenha\\.codex\\skills\\codex-rename\\server.py"
+      ],
+      "env": {
+        "PYTHONIOENCODING": "utf-8"
+      }
+    }
+  }
+}
