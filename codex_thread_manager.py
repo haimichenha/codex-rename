@@ -22,6 +22,7 @@ import os
 import re
 import shutil
 import sqlite3
+import subprocess
 import sys
 from pathlib import Path
 from typing import Any
@@ -507,6 +508,120 @@ def rename_thread(args: argparse.Namespace) -> int:
     )
 
 
+def _ps_single_quote(value: str) -> str:
+    """Quote a string for a PowerShell single-quoted literal."""
+
+    return "'" + value.replace("'", "''") + "'"
+
+
+def schedule_rename_thread(args: argparse.Namespace) -> int:
+    """Schedule a delayed rename in a hidden PowerShell process.
+
+    This is useful for the currently active VS Code Codex thread. Directly
+    renaming the active thread can be overwritten by the still-running Codex
+    process when it persists the current turn. A delayed rename runs after the
+    assistant response has finished, so it is less likely to be clobbered.
+    """
+
+    codex_home = Path(args.codex_home).expanduser()
+    thread = load_thread(codex_home, args.id)
+    delay = max(1, int(args.delay_seconds))
+
+    temp_root = Path(os.environ.get("TEMP", "D:\\tmp"))
+    temp_root.mkdir(parents=True, exist_ok=True)
+    safe_id = re.sub(r"[^A-Za-z0-9_.-]+", "-", thread["id"])
+    script_path = temp_root / f"codex-delayed-rename-{safe_id}.ps1"
+    log_path = Path(args.log) if args.log else temp_root / f"codex-delayed-rename-{safe_id}.log"
+
+    rename_args = [
+        str(Path(sys.executable).resolve()),
+        str(Path(__file__).resolve()),
+        "--codex-home",
+        str(codex_home),
+        "rename",
+        "--id",
+        thread["id"],
+        "--title",
+        args.title,
+        "--keep-backups",
+        str(args.keep_backups),
+        "--keep-recent-renames",
+        str(args.keep_recent_renames),
+    ]
+    if args.allow_long_title:
+        rename_args.append("--allow-long-title")
+
+    command = " ".join(_ps_single_quote(part) for part in rename_args)
+    script = "\n".join(
+        [
+            f"Start-Sleep -Seconds {delay}",
+            f"& {command} *> {_ps_single_quote(str(log_path))}",
+            "",
+        ]
+    )
+    # Windows PowerShell 5.1 treats UTF-8 without BOM as the system ANSI code
+    # page. If the title contains Chinese text, that can turn "优化" into
+    # mojibake such as "浼樺寲" before Python receives argv. Use UTF-8 with BOM
+    # so both Windows PowerShell 5.1 and newer PowerShell parse the script
+    # arguments as Unicode.
+    script_path.write_text(script, encoding="utf-8-sig")
+
+    subprocess.Popen(
+        [
+            "powershell",
+            "-NoProfile",
+            "-ExecutionPolicy",
+            "Bypass",
+            "-File",
+            str(script_path),
+        ],
+        creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0),
+    )
+
+    print(f"Scheduled delayed rename after {delay}s.")
+    print(f"ID:        {thread['id']}")
+    print(f"Old title: {thread.get('title') or ''}")
+    print(f"New title: {args.title}")
+    print(f"Script:    {script_path}")
+    print(f"Log:       {log_path}")
+    print("After the delay, run Developer: Reload Window or restart VS Code/Codex.")
+    return 0
+
+
+def hot_rename_thread(args: argparse.Namespace) -> int:
+    """Rename immediately, then schedule a delayed same-title repair pass."""
+
+    codex_home = Path(args.codex_home).expanduser()
+    thread = load_thread(codex_home, args.id)
+    print("HOT_RENAME: applying immediate rename first.")
+    rc = perform_rename(
+        codex_home=codex_home,
+        thread=thread,
+        new_title=args.title,
+        dry_run=args.dry_run,
+        allow_long_title=args.allow_long_title,
+        keep_backups=args.keep_backups,
+        keep_recent_renames=args.keep_recent_renames,
+    )
+    if args.dry_run:
+        print("HOT_RENAME: dry-run mode, delayed repair pass not scheduled.")
+        return rc
+
+    print("")
+    print("HOT_RENAME: scheduling delayed repair pass for active-thread overwrite.")
+    schedule_args = argparse.Namespace(
+        codex_home=str(codex_home),
+        id=args.id,
+        title=args.title,
+        delay_seconds=args.delay_seconds,
+        log=args.log,
+        allow_long_title=args.allow_long_title,
+        keep_backups=args.keep_backups,
+        keep_recent_renames=args.keep_recent_renames,
+    )
+    return schedule_rename_thread(schedule_args)
+
+
 def tail_rename_threads(args: argparse.Namespace) -> int:
     codex_home = Path(args.codex_home).expanduser()
     rows = load_recent_threads(
@@ -662,6 +777,63 @@ def build_parser() -> argparse.ArgumentParser:
         help="Keep only the newest N rename metadata entries. Default: 2.",
     )
     p_rename.set_defaults(func=rename_thread)
+
+    p_schedule = sub.add_parser(
+        "schedule-rename",
+        help="Schedule a delayed rename for an active VS Code Codex thread.",
+    )
+    p_schedule.add_argument("--id", required=True, help="Thread/session UUID.")
+    p_schedule.add_argument("--title", required=True, help="New thread title.")
+    p_schedule.add_argument(
+        "--delay-seconds",
+        type=int,
+        default=10,
+        help="Delay before applying rename. Default: 10.",
+    )
+    p_schedule.add_argument("--log", help="Optional log path for the delayed rename.")
+    p_schedule.add_argument("--allow-long-title", action="store_true")
+    p_schedule.add_argument(
+        "--keep-backups",
+        type=int,
+        default=3,
+        help="Keep only the newest N rename backups in the backup root. Default: 3.",
+    )
+    p_schedule.add_argument(
+        "--keep-recent-renames",
+        type=int,
+        default=2,
+        help="Keep only the newest N rename metadata entries. Default: 2.",
+    )
+    p_schedule.set_defaults(func=schedule_rename_thread)
+
+    p_hot = sub.add_parser(
+        "hot-rename",
+        help="Rename now and schedule a delayed repair pass for active VS Code threads.",
+    )
+    p_hot.add_argument("--id", required=True, help="Thread/session UUID.")
+    p_hot.add_argument("--title", required=True, help="New thread title.")
+    p_hot.add_argument("--dry-run", action="store_true")
+    p_hot.add_argument(
+        "--delay-seconds",
+        type=int,
+        default=10,
+        help="Delay before applying the repair pass. Default: 10.",
+    )
+    p_hot.add_argument("--log", help="Optional log path for the delayed repair pass.")
+    p_hot.add_argument("--allow-long-title", action="store_true")
+    p_hot.add_argument(
+        "--keep-backups",
+        type=int,
+        default=3,
+        help="Keep only the newest N rename backups in the backup root. Default: 3.",
+    )
+    p_hot.add_argument(
+        "--keep-recent-renames",
+        type=int,
+        default=2,
+        help="Keep only the newest N rename metadata entries. Default: 2.",
+    )
+    p_hot.set_defaults(func=hot_rename_thread)
 
     p_recent = sub.add_parser("recent", help="Show recent rename metadata entries.")
     p_recent.add_argument("--limit", type=int, default=2)

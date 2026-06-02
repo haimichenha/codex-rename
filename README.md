@@ -24,7 +24,9 @@
 
 ```powershell
 python .\codex_thread_manager.py list --limit 5 --show-cwd
+python .\codex_thread_manager.py hot-rename --id <SESSION_ID> --title "新标题"
 python .\codex_thread_manager.py rename --id <SESSION_ID> --title "新标题"
+python .\codex_thread_manager.py schedule-rename --id <SESSION_ID> --title "新标题" --delay-seconds 10
 python .\codex_thread_manager.py scan-rename-commands --limit 20 --show-cwd
 python .\codex_thread_manager.py tail-rename --limit 20 --apply
 python .\codex_thread_manager.py recent --limit 2
@@ -50,7 +52,15 @@ python .\codex_thread_manager.py --codex-home "C:\Users\you\.codex" list --limit
    ```
 
 3. 将最近更新时间最高的 `source = vscode` thread 当作当前候选。
-4. 直接执行：
+4. 如果是当前正在运行的 VS Code Codex 对话，优先执行热更新：
+
+   ```powershell
+   python "<repo>\codex_thread_manager.py" hot-rename --id <SESSION_ID> --title "新标题"
+   ```
+
+   `hot-rename` 会先立即写入标题，尽量让 UI 快速刷新；同时延迟再写一次同名标题，防止当前活动 Codex 进程在保存本轮对话时把旧标题覆盖回来。
+
+   如果是旧对话/非活动对话，也可以直接执行：
 
    ```powershell
    python "<repo>\codex_thread_manager.py" rename --id <SESSION_ID> --title "新标题"
@@ -58,6 +68,16 @@ python .\codex_thread_manager.py --codex-home "C:\Users\you\.codex" list --limit
 
 5. 输出中保留 `Backup:`、`Recent rename index:` 和 `Rollback command:`。
 6. 提醒用户 Reload Window / 重启 VS Code 刷新缓存。
+
+### 当前活动对话为什么需要 hot-rename
+
+`rename` 是本地 metadata 写入；但当前活动的 Codex VS Code 面板可能仍在内存里持有旧标题，并在下一次保存当前回合时回写旧标题。`hot-rename` 的策略是：
+
+1. 立即写入一次，保留“热更新”体验；
+2. 生成一个隐藏的延迟 PowerShell 任务；
+3. 延迟任务再次写入同一标题，修复活动线程回写旧标题的问题。
+
+延迟脚本使用 UTF-8 with BOM 写入，避免 Windows PowerShell 5.1 把中文标题编码成 `浼樺寲` 这类乱码。
 
 ### 多个并行会话
 
@@ -113,6 +133,8 @@ Available tools:
 - `codex_rename_preview_tail_rename(...)` — dry-run batch rename preview.
 - `codex_rename_apply_tail_rename(...)` — write batch rename; requires `CONFIRM_CODEX_RENAME_WRITE`.
 - `codex_rename_thread(...)` — rename one thread; non-dry-run requires `CONFIRM_CODEX_RENAME_WRITE`.
+- `codex_rename_hot_thread(...)` — active-thread friendly hot rename; immediate write + delayed repair pass; requires `CONFIRM_CODEX_RENAME_WRITE`.
+- `codex_rename_schedule_thread(...)` — delayed repair-only rename; requires `CONFIRM_CODEX_RENAME_WRITE`.
 - `codex_rename_recent(...)` — read recent rename metadata.
 - `codex_rename_rollback(...)` — dry-run by default; real rollback requires `CONFIRM_CODEX_RENAME_ROLLBACK`.
 

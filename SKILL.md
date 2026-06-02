@@ -14,7 +14,9 @@ When available, use the `codex-rename` MCP tools:
 - `codex_rename_help()` for the short workflow and confirmation tokens.
 - `codex_rename_list_threads(limit=1, show_cwd=true)` to identify the most recent VS Code Codex thread.
 - `codex_rename_thread(thread_id, title, dry_run=true, confirm_token="")` before a single-thread write.
-- `codex_rename_thread(..., confirm_token="CONFIRM_CODEX_RENAME_WRITE")` only after the user clearly wants the rename.
+- `codex_rename_hot_thread(..., confirm_token="CONFIRM_CODEX_RENAME_WRITE")` for the currently active VS Code Codex thread: it writes immediately, then schedules a delayed same-title repair pass.
+- `codex_rename_thread(..., confirm_token="CONFIRM_CODEX_RENAME_WRITE")` for inactive/older threads only after the user clearly wants the rename.
+- `codex_rename_schedule_thread(..., confirm_token="CONFIRM_CODEX_RENAME_WRITE")` when only a delayed repair pass is needed.
 - `codex_rename_scan_commands(...)` and `codex_rename_preview_tail_rename(...)` for parallel panels using trailing `/codex rename <title>` commands.
 - `codex_rename_apply_tail_rename(confirm_token="CONFIRM_CODEX_RENAME_WRITE")` only after confirming the batch.
 - `codex_rename_recent(...)` and `codex_rename_rollback(...)` for rollback workflows.
@@ -26,6 +28,27 @@ If MCP is unavailable, run `codex_thread_manager.py` directly from this skill di
 - `Backup:`
 - `Recent rename index:`
 - `Rollback command:`
+
+For the **currently active VS Code Codex thread**, preserve the hot-update
+experience but add a delayed repair pass, because a direct metadata rename can
+be overwritten by the still-running Codex process when it saves the current
+turn. Prefer:
+
+```powershell
+python "<skill-dir>\codex_thread_manager.py" hot-rename --id <SESSION_ID> --title "新标题" --delay-seconds 10
+```
+
+This writes immediately so the title can refresh quickly, then schedules a
+same-title repair pass after the assistant turn. If the user explicitly wants
+only the delayed repair pass, use:
+
+```powershell
+python "<skill-dir>\codex_thread_manager.py" schedule-rename --id <SESSION_ID> --title "新标题" --delay-seconds 10
+```
+
+Then tell the user to wait for the delay and run `Developer: Reload Window` or
+restart VS Code/Codex if the UI cache does not update. The scheduled command
+prints a `Log:` path; inspect that log if the title still does not change.
 
 ## Safety
 

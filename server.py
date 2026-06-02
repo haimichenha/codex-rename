@@ -186,6 +186,71 @@ def codex_rename_thread(
 
 
 @mcp.tool()
+def codex_rename_hot_thread(
+    thread_id: str,
+    title: str,
+    confirm_token: str,
+    dry_run: bool = False,
+    delay_seconds: int = 10,
+    allow_long_title: bool = False,
+    keep_backups: int = 3,
+    keep_recent_renames: int = 2,
+    codex_home: str | None = None,
+) -> dict[str, Any]:
+    """Rename immediately, then schedule a delayed repair pass for an active VS Code Codex thread."""
+    if not dry_run and confirm_token != CONFIRM_RENAME_TOKEN:
+        return {
+            "ok": False,
+            "permission_tier": "P3",
+            "error": f"Missing confirm_token={CONFIRM_RENAME_TOKEN}. Refusing to write Codex metadata.",
+        }
+    args = _base_args(codex_home) + [
+        "hot-rename",
+        "--id", thread_id,
+        "--title", title,
+        "--delay-seconds", str(_bounded(delay_seconds, 1, 300)),
+        "--keep-backups", str(_bounded(keep_backups, 1, 20)),
+        "--keep-recent-renames", str(_bounded(keep_recent_renames, 1, 20)),
+    ]
+    if dry_run:
+        args.append("--dry-run")
+    if allow_long_title:
+        args.append("--allow-long-title")
+    return _run(args)
+
+
+@mcp.tool()
+def codex_rename_schedule_thread(
+    thread_id: str,
+    title: str,
+    confirm_token: str,
+    delay_seconds: int = 10,
+    allow_long_title: bool = False,
+    keep_backups: int = 3,
+    keep_recent_renames: int = 2,
+    codex_home: str | None = None,
+) -> dict[str, Any]:
+    """Schedule only a delayed rename repair pass for an active VS Code Codex thread."""
+    if confirm_token != CONFIRM_RENAME_TOKEN:
+        return {
+            "ok": False,
+            "permission_tier": "P3",
+            "error": f"Missing confirm_token={CONFIRM_RENAME_TOKEN}. Refusing to write Codex metadata.",
+        }
+    args = _base_args(codex_home) + [
+        "schedule-rename",
+        "--id", thread_id,
+        "--title", title,
+        "--delay-seconds", str(_bounded(delay_seconds, 1, 300)),
+        "--keep-backups", str(_bounded(keep_backups, 1, 20)),
+        "--keep-recent-renames", str(_bounded(keep_recent_renames, 1, 20)),
+    ]
+    if allow_long_title:
+        args.append("--allow-long-title")
+    return _run(args)
+
+
+@mcp.tool()
 def codex_rename_recent(limit: int = 2, codex_home: str | None = None) -> dict[str, Any]:
     """Show recent Codex rename metadata. Read-only."""
     args = _base_args(codex_home) + ["recent", "--limit", str(_bounded(limit, 1, 20))]
@@ -220,7 +285,8 @@ def codex_rename_help() -> dict[str, Any]:
         "common_flow": [
             "codex_rename_list_threads(limit=1, show_cwd=true)",
             "codex_rename_thread(thread_id, title, dry_run=true, confirm_token='')",
-            f"codex_rename_thread(thread_id, title, confirm_token='{CONFIRM_RENAME_TOKEN}')",
+            f"For the currently active VS Code thread, prefer codex_rename_hot_thread(thread_id, title, confirm_token='{CONFIRM_RENAME_TOKEN}')",
+            f"For inactive threads, codex_rename_thread(thread_id, title, confirm_token='{CONFIRM_RENAME_TOKEN}') is enough",
             "Ask the user to Reload Window / restart VS Code to refresh cached history.",
         ],
         "parallel_flow": [
