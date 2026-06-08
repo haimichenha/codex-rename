@@ -4,6 +4,8 @@
 
 它不是 OpenAI 官方 UI 功能，而是一个保守的本地 metadata helper：重命名前自动备份，写入失败可回滚。
 
+现在也包含一个薄的 Codex/cc-switch provider 切换助手，用于 `/switch <provider>`、provider 污染检查，以及 URL/API key 热更新。
+
 ## 能做什么
 
 - 列出最近的 Codex threads，默认只看 `source = vscode`
@@ -17,6 +19,8 @@
 - 记录最近 2 次重命名元数据到 `~/.codex/thread-manager/recent-renames.json`
 - 支持按备份目录回滚
 - 支持多个并行 VS Code Codex 面板：扫描各自 rollout 尾部的 `/codex rename 新标题` 并批量重命名
+- 安全切换 Codex/cc-switch provider：写入 `.codex` 前检查当前 provider 与目标 provider 是否互相污染
+- 支持 provider URL/API key 热修复，并使用 3 槽环形备份
 
 ## 使用
 
@@ -33,6 +37,31 @@ python .\codex_thread_manager.py recent --limit 2
 python .\codex_thread_manager.py rollback --backup "<BACKUP_DIR>" --dry-run
 python .\codex_thread_manager.py rollback --backup "<BACKUP_DIR>"
 ```
+
+Provider 切换：
+
+```powershell
+.\codex-switch.ps1 boh
+.\codex-switch.ps1 muyuan
+python .\codex_switch_manager.py providers
+python .\codex_switch_manager.py diag
+python .\codex_switch_manager.py validate-providers
+```
+
+如果 provider 保存的 URL 或 key 自己也错了，可以切换时一起修：
+
+```powershell
+$env:CODEX_API_KEY = "sk-..."
+.\codex-switch.ps1 jgcode -BaseUrl "https://newapi.example.com/v1" -ApiKeyEnv CODEX_API_KEY
+```
+
+也可以只修 provider，不切换：
+
+```powershell
+python .\codex_switch_manager.py update-provider jgcode --base-url "https://newapi.example.com/v1" --api-key-env CODEX_API_KEY --write
+```
+
+不推荐把真实 key 直接放在命令行参数中；优先用环境变量，避免 shell 历史记录泄露。
 
 如果设置了自定义 Codex home：
 
@@ -137,6 +166,12 @@ Available tools:
 - `codex_rename_schedule_thread(...)` — delayed repair-only rename; requires `CONFIRM_CODEX_RENAME_WRITE`.
 - `codex_rename_recent(...)` — read recent rename metadata.
 - `codex_rename_rollback(...)` — dry-run by default; real rollback requires `CONFIRM_CODEX_RENAME_ROLLBACK`.
+- `codex_switch_diag()` — redacted Codex/cc-switch provider diagnostics.
+- `codex_switch_list_providers()` — list providers and effective URLs.
+- `codex_switch_validate_providers()` — read-only provider contamination guard check.
+- `codex_switch_preview_provider(...)` — dry-run switch preview.
+- `codex_switch_provider(...)` — switch provider; requires `CONFIRM_CODEX_SWITCH_WRITE`.
+- `codex_switch_update_provider(...)` — patch provider URL/API key; requires `CONFIRM_CODEX_SWITCH_WRITE`.
 
 The MCP is intentionally a thin wrapper around `codex_thread_manager.py`; it preserves backups and rollback behavior while keeping the model context small.
 
@@ -149,6 +184,8 @@ The installed Codex skill is intentionally thin:
 - `SKILL.md` is only the trigger/routing layer.
 - `server.py` exposes MCP tools for normal use.
 - `codex_thread_manager.py` keeps deterministic local metadata operations, backups, and rollback.
+- `codex_switch_manager.py` keeps deterministic provider switching, pairwise contamination checks, URL/API key patching, and ring backups.
+- `codex-switch.ps1` is the thin PowerShell entry for `/switch <provider>`.
 - The old long prompt entry under `~/.codex/prompts/codex-rename.md` should stay disabled; otherwise Codex may inject the long prompt context instead of using MCP.
 
 For Codex usage, prefer the skill trigger + MCP tools. Do not recreate the old prompt-based workflow.

@@ -9,7 +9,9 @@ from mcp.server.fastmcp import FastMCP
 
 CONFIRM_RENAME_TOKEN = "CONFIRM_CODEX_RENAME_WRITE"
 CONFIRM_ROLLBACK_TOKEN = "CONFIRM_CODEX_RENAME_ROLLBACK"
+CONFIRM_SWITCH_TOKEN = "CONFIRM_CODEX_SWITCH_WRITE"
 SCRIPT = Path(__file__).with_name("codex_thread_manager.py")
+SWITCH_SCRIPT = Path(__file__).with_name("codex_switch_manager.py")
 
 mcp = FastMCP("codex-rename")
 
@@ -18,6 +20,15 @@ def _base_args(codex_home: str | None = None) -> list[str]:
     args = [sys.executable, str(SCRIPT)]
     if codex_home:
         args.extend(["--codex-home", codex_home])
+    return args
+
+
+def _switch_args(codex_home: str | None = None, cc_switch_home: str | None = None) -> list[str]:
+    args = [sys.executable, str(SWITCH_SCRIPT)]
+    if codex_home:
+        args.extend(["--codex-home", codex_home])
+    if cc_switch_home:
+        args.extend(["--cc-switch-home", cc_switch_home])
     return args
 
 
@@ -278,6 +289,101 @@ def codex_rename_rollback(
 
 
 @mcp.tool()
+def codex_switch_diag(codex_home: str | None = None, cc_switch_home: str | None = None) -> dict[str, Any]:
+    """Show redacted Codex/cc-switch provider diagnostics. Read-only."""
+    return _run(_switch_args(codex_home, cc_switch_home) + ["diag"])
+
+
+@mcp.tool()
+def codex_switch_list_providers(codex_home: str | None = None, cc_switch_home: str | None = None) -> dict[str, Any]:
+    """List cc-switch Codex providers and effective base URLs. Read-only."""
+    return _run(_switch_args(codex_home, cc_switch_home) + ["providers"])
+
+
+@mcp.tool()
+def codex_switch_validate_providers(codex_home: str | None = None, cc_switch_home: str | None = None) -> dict[str, Any]:
+    """Validate guarded provider settings for cross-provider contamination. Read-only."""
+    return _run(_switch_args(codex_home, cc_switch_home) + ["validate-providers"])
+
+
+@mcp.tool()
+def codex_switch_preview_provider(
+    provider: str,
+    base_url: str | None = None,
+    api_key_env: str | None = None,
+    codex_home: str | None = None,
+    cc_switch_home: str | None = None,
+) -> dict[str, Any]:
+    """Preview switching Codex provider. Dry-run only; does not print or accept raw API keys."""
+    args = _switch_args(codex_home, cc_switch_home) + ["switch", provider]
+    if base_url:
+        args.extend(["--base-url", base_url])
+    if api_key_env:
+        args.extend(["--api-key-env", api_key_env])
+    return _run(args)
+
+
+@mcp.tool()
+def codex_switch_provider(
+    provider: str,
+    confirm_token: str,
+    base_url: str | None = None,
+    api_key_env: str | None = None,
+    thread: str | None = None,
+    no_sync_current: bool = False,
+    codex_home: str | None = None,
+    cc_switch_home: str | None = None,
+) -> dict[str, Any]:
+    """Switch Codex/cc-switch provider. Requires CONFIRM_CODEX_SWITCH_WRITE."""
+    if confirm_token != CONFIRM_SWITCH_TOKEN:
+        return {
+            "ok": False,
+            "permission_tier": "P3",
+            "error": f"Missing confirm_token={CONFIRM_SWITCH_TOKEN}. Refusing to write provider config.",
+        }
+    args = _switch_args(codex_home, cc_switch_home) + ["switch", provider, "--write"]
+    if thread:
+        args.extend(["--thread", thread])
+    if no_sync_current:
+        args.append("--no-sync-current")
+    if base_url:
+        args.extend(["--base-url", base_url])
+    if api_key_env:
+        args.extend(["--api-key-env", api_key_env])
+    return _run(args)
+
+
+@mcp.tool()
+def codex_switch_update_provider(
+    provider: str,
+    confirm_token: str,
+    base_url: str | None = None,
+    api_key_env: str | None = None,
+    apply_provider: bool = False,
+    sync_current: bool = False,
+    codex_home: str | None = None,
+    cc_switch_home: str | None = None,
+) -> dict[str, Any]:
+    """Patch a provider's stored base_url/API key. Requires CONFIRM_CODEX_SWITCH_WRITE."""
+    if confirm_token != CONFIRM_SWITCH_TOKEN:
+        return {
+            "ok": False,
+            "permission_tier": "P3",
+            "error": f"Missing confirm_token={CONFIRM_SWITCH_TOKEN}. Refusing to write provider config.",
+        }
+    args = _switch_args(codex_home, cc_switch_home) + ["update-provider", provider, "--write"]
+    if base_url:
+        args.extend(["--base-url", base_url])
+    if api_key_env:
+        args.extend(["--api-key-env", api_key_env])
+    if apply_provider:
+        args.append("--apply")
+    if sync_current:
+        args.append("--sync-current")
+    return _run(args)
+
+
+@mcp.tool()
 def codex_rename_help() -> dict[str, Any]:
     """Return short usage and confirmation tokens for host models without loading the long prompt."""
     return {
@@ -300,8 +406,16 @@ def codex_rename_help() -> dict[str, Any]:
             "codex_rename_rollback(backup, dry_run=true)",
             f"codex_rename_rollback(backup, dry_run=false, confirm_token='{CONFIRM_ROLLBACK_TOKEN}')",
         ],
+        "switch_flow": [
+            "codex_switch_list_providers()",
+            "codex_switch_preview_provider(provider)",
+            f"codex_switch_provider(provider, confirm_token='{CONFIRM_SWITCH_TOKEN}')",
+            "If a provider URL/key is wrong, prefer api_key_env over raw keys: codex_switch_provider(provider, base_url='https://example/v1', api_key_env='CODEX_API_KEY', confirm_token=...)",
+            "Use /load only for thread/session ids, not for provider switching.",
+        ],
         "write_confirm_token": CONFIRM_RENAME_TOKEN,
         "rollback_confirm_token": CONFIRM_ROLLBACK_TOKEN,
+        "switch_confirm_token": CONFIRM_SWITCH_TOKEN,
         "safety": "Local metadata hack; writes are backed up by codex_thread_manager.py. Do not edit state files manually.",
     }
 
