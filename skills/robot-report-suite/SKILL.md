@@ -1,15 +1,15 @@
 ---
 name: robot-report-suite
-description: 面向机器人实训高级报告的模板保护、证据整理、流程/信号图制作、Word 文档渲染质检及后续答辩 PPT 衔接工作流。用户提供实验图片、日志或分章节要求时使用。
+description: 面向机器人实训高级报告与技术答辩 PPT 的模板保护、证据整理、流程/信号图制作、证据化写作、视觉重构和渲染质检工作流。用户提供实验图片、日志、视频、报告模板、PPT 或分章节/分页面要求时使用。
 ---
 
 # 机器人实训报告套件
 
-本技能适用于用户提供的机器人实训报告模板。目标是把可核查的实验材料组织成一份可编辑、可复现、可审阅的报告；不在没有证据时虚构实验结论。
+本技能服务于本项目的 `机器人工程实训高级报告模板.doc`。目标是把可核查的实验材料组织成一份可编辑、可复现、可审阅的报告；不是在没有证据时虚构实验结论。
 
 ## 核心约束
 
-1. **保护模板**：绝不直接改写用户提供的原始 `.doc`/`.docx`。所有编辑都在 `report-workspace/output/` 的副本中进行；先记录原始模板的路径、大小和修改时间。
+1. **保护模板**：绝不直接改写根目录的原始 `.doc`。所有编辑都在 `report-workspace/output/` 的副本中进行；先记录原始模板的路径、大小和修改时间。
 2. **先证据、后表述**：每项陈述标注为 `实测证据`、`用户确认`、`推导/待验证` 三者之一。没有日志、照片或用户确认的数据不写成已完成结果。
 3. **图源可编辑**：流程图/结构图保存 Mermaid 或 Graphviz 源文件；曲线和信号图保存生成脚本与数据来源。交付图仅是导出物，不能是唯一源文件。
 4. **小步交付**：一次只完成用户指定的一个章节或图组，完成后提供该部分的证据清单、待补材料和渲染检查结果。
@@ -30,13 +30,24 @@ report-workspace/
   sections/              # 各章节草稿与引用清单
   output/                # 可交付 .docx/.pdf/.pptx，绝不覆盖模板
   manifest.json          # 材料、图号、结论状态、版本和待办
+  ppt/                   # 答辩 PPT 专用工作区（报告稳定后再建立）
+    input/               # 原 PPT、用户素材副本及其哈希/只读说明
+    brief/               # 受众、时长、叙事与答辩问题
+    assets/              # 素材清单、视频关键帧与来源说明
+    page-locks/          # 每页结论、裁切和视觉锁定卡
+    source/              # 可编辑图、图表和 PPT 源
+    output/              # 版本化 .pptx/.pdf 交付物，绝不覆盖输入
+    preview/             # 最多保留最近三个可丢弃预览版本
+    render/              # 单页渲染图和整套 contact sheet
+    qa/                  # 结构检查、审稿记录和页序检查
+    notes/               # 讲述节拍、证据回指和 Q&A 提示
 ```
 
 ## 执行顺序
 
 ### 阶段 A：预检和模板盘点
 
-1. 运行本技能的 `scripts/preflight_report_tools.ps1`，只读取模板和可用工具状态。
+1. 运行 `scripts/preflight_report_tools.ps1`，只读取模板和本机工具状态。
 2. 对旧式 `.doc`，优先转换为保留原布局的 `.docx` 副本后再编辑；不要用 `python-docx` 直接修改 `.doc`。
 3. 建立章节清单、图表编号和证据台账。详细规则见 `references/core.md`。
 
@@ -53,7 +64,7 @@ report-workspace/
 仍待用户确认的内容：
 ```
 
-正文使用“目的 → 方案 → 实现 → 测试证据 → 结果与限制”的顺序。硬件连接、PWM、蓝牙控制、舵机串口、姿态/控制算法等内容只以当前代码、日志和实测照片能够支持的粒度描述。
+正文使用“目的 → 方案 → 实现 → 测试证据 → 结果与限制”的顺序。硬件连接、PWM、蓝牙控制、舵机串口、陀螺仪/LADRC 等内容应只以当前代码、日志和实测照片能够支持的粒度描述。
 
 ### 阶段 C：图、表与信号
 
@@ -82,9 +93,18 @@ report-workspace/
 
 在此之前，摘要位置只能显示“正文定稿后编写”，不得提前生成看似完整的摘要。
 
-### 阶段 E：PPT 衔接（可选）
+### 阶段 E：PPT 衔接与技术答辩生产（可选）
 
-报告章节稳定后，按 `references/presentation-bridge.md` 将每章提炼为一张“结论 + 证据图”的幻灯片。PPT 使用相同的图源、编号和数据，不与报告形成两套相互矛盾的内容。
+报告章节稳定后，先读 `references/presentation-bridge.md`，再执行下列顺序：
+
+1. 在 `report-workspace/ppt/brief/` 确定受众、总时长、页数、报告版本、必须回答的问题和已知限制。
+2. 用 `references/ppt-asset-manifest-template.md` 盘点照片、视频关键帧、日志、曲线、流程图和外部氛围素材；明确每项素材能证明与不能证明什么。
+3. 用 `references/ppt-production-system.md` 建立“单页结论—证据—讲解节奏”映射；常规整套先校准封面、最难技术页、最强验证页三张，再扩展整套；1—3 页短 deck 按其中的短 deck 例外执行。
+4. 用 `references/ppt-page-lock-template.md` 固定每页的 Hero 主证据、Support 支撑材料、Finish 编辑收尾层、裁切、比例、配色角色和相邻页差异，不能先堆卡片再补装饰。
+5. 按 `references/ppt-design-language.md` 选择页面视觉语法，并按 `references/ppt-review-rubric.md` 导出逐页审稿；不通过时先纠正结论和证据，再修正布局、裁切和材质，最后才加装饰。
+6. 依 `references/ppt-validation-plan.md` 核对输入保护、素材追溯、投影可读性、渲染工件和前向测试；未通过硬门的版本不得作为交付候选。
+
+PPT 使用与报告相同的图源、编号和数据，不与报告形成两套相互矛盾的结论。外部或生成图仅能承担氛围/解释层，不能伪装成实车或实测证据。
 
 ## 用户后续提供材料时的输入格式
 
@@ -107,5 +127,13 @@ report-workspace/
 - `references/writing-style.md`：自然、具体、实验记录式的中文写作与摘要后置规则。
 - `references/figures.md`：流程图、结构图、信号图的选型与交付格式。
 - `references/figure-workflow.md`：基于 `create-figure` 适配的本地证据门、后端路由和图形验收。
+- `references/upstream-selection.md`：已锁定的 Figure/Office 两个仓库及补充资源的采用边界。
 - `references/toolchain.md`：OfficeCLI、Office/LibreOffice 与 Python 的职责边界。
-- `references/presentation-bridge.md`：从报告到答辩 PPT 的复用规则。
+- `references/resource-radar.md`：已核验的外部技能/工具候选、采用范围与暂不安装原因。
+- `references/presentation-bridge.md`：从报告到答辩 PPT 的叙事与证据映射。
+- `references/ppt-production-system.md`：PPT 资产先行、页面锁定、逐页渲染审稿与交付工作流。
+- `references/ppt-asset-manifest-template.md`：全套素材、页面资产映射、视频与缺料队列模板。
+- `references/ppt-design-language.md`：高质量技术答辩的色彩、网格、字体、图片处理与反重复规则。
+- `references/ppt-page-lock-template.md`：单页视觉与证据锁定卡。
+- `references/ppt-review-rubric.md`：100 分审稿量表、硬失败项和修订顺序。
+- `references/ppt-validation-plan.md`：输入保护、可交付工件、QA 门禁与前向测试合同。
