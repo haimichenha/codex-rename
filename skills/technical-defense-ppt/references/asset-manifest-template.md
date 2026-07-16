@@ -1,6 +1,6 @@
 # PPT 资产清单与页面映射模板
 
-在制作页面前复制本模板到 `report-workspace/ppt/assets/asset-manifest.md`。素材不是“图片库”，而是对结论承担不同角色的证据包。
+在制作页面前复制本模板到 `ppt-workspace/assets/asset-manifest.md`。素材不是“图片库”，而是对结论承担不同角色的证据包。
 
 ## 全套资产包
 

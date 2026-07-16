@@ -2,7 +2,7 @@
 
 ## 角色分工
 
-1. **OfficeCLI（推荐候选）**：用于可脚本化地创建/编辑 Office 文件、渲染预览以及“渲染后检查再修正”的循环。其本地优先的 Office 工作流和 Word/Excel/PPT 渲染能力适合成为后续报告交付管线的一部分。来源：[iOfficeAI/OfficeCLI](https://github.com/iOfficeAI/OfficeCLI)。
+1. **OfficeCLI（推荐候选）**：用于可脚本化地创建/编辑 Office 文件、渲染预览以及“渲染后检查再修正”的循环。其本地优先的 Office 工作流和 Word/Excel 渲染能力适合成为报告交付管线的一部分。来源：[iOfficeAI/OfficeCLI](https://github.com/iOfficeAI/OfficeCLI)。
 2. **Microsoft Word 或 LibreOffice**：负责旧式 `.doc` 到 `.docx` 的布局保真转换、模板样式继承和最终人工检查。
 3. **python-docx**：只编辑 `.docx`，适合生成结构化段落、表格和插图；不能直接安全编辑旧式 `.doc`。
 4. **Matplotlib + Mermaid/Graphviz**：生成可追溯的报告图，不承担 Word 排版。
@@ -38,9 +38,3 @@ OfficeCLI 的核心接口面向 `.docx`；官方技能说明把 `.doc` 列为插
 ```
 
 该脚本只报告模板和可用命令，不修改任何文件。
-
-## PPT 源文件与渲染检查
-
-PPT 同样遵循源文件副本 → 编辑 → 导出或渲染 → 目视检查 → 修正的循环。保护用户提供的 `.pptx`，在 `report-workspace/ppt/input/` 记录原文件名、大小、修改时间和哈希后，从新预览副本开始修改；流程图、曲线、视频关键帧和素材清单保留在 `ppt/source/`、`ppt/assets/` 与 `ppt/qa/`，不能只在 PowerPoint 内保留不可追溯的截图。
-
-渲染时至少检查单页、整套 contact sheet、全尺寸文字/图例、暗底投影对比度、图片裁切、跨页对齐、视频备份和讲解备注。输出应版本化放在 `ppt/output/`，渲染图放在 `ppt/render/`；无法渲染时，先保留可编辑源和待检项，不猜测版式已经正确。

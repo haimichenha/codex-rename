@@ -11,7 +11,7 @@
 | PWM 阶跃、角度、速度、串口时间序列 | Matplotlib | `.py` + `.csv`/日志摘录 | `.svg` + `.png` |
 | 照片上的接口或部件说明 | 原始图片 + 标注脚本/记录 | 原图 + 标注说明 | `.png` |
 
-Draw.io 提供更适合 Word/PPT 修订的可编辑流程和结构图；Mermaid 适合 Git 友好的简洁过程和时序图；Graphviz 是当前零新增安装的拓扑回退；Matplotlib 只绘制具有明确数据来源的数值图。它们不能替代真实接线图、示波器波形或实测照片。完整的证据门与后端选择见 `figure-workflow.md`。
+Draw.io 提供更适合 Word 报告修订的可编辑流程和结构图；Mermaid 适合 Git 友好的简洁过程和时序图；Graphviz 是当前零新增安装的拓扑回退；Matplotlib 只绘制具有明确数据来源的数值图。它们不能替代真实接线图、示波器波形或实测照片。完整的证据门与后端选择见 `figure-workflow.md`。
 
 ## 每幅图的交付合同
 
