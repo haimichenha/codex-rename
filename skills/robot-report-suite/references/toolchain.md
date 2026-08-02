@@ -9,7 +9,7 @@
 
 ## OfficeCLI 在报告工作区中的定位
 
-OfficeCLI 负责**副本 `.docx` 的格式、布局、目录/交叉引用刷新、内容结构检查和渲染预览**，不负责替代图形源文件。报告图仍从 `figures/source/` 导出，再插入文档副本。
+OfficeCLI 负责**副本 `.docx` 的格式、布局、目录/交叉引用刷新、内容结构检查和渲染预览**，不负责替代图形源文件。报告图仍从 `figures/source/` 导出，再插入文档副本。用户给出模板时，任何工具都必须先运行 `inspect_docx_template.py` 并建立 `format-contract.md`；不得为方便脚本生成而丢弃封面、基础页、摘要、页眉页脚或原有图标。
 
 安装并完成小副本验证后，遵循其分层策略：先只读检查（`view outline` / `view issues`），再做结构化编辑，必要时才进入 XML 层；格式不确定时先查 `help`，不要猜参数。对于常规实训报告，应选择通用 `word` 工作流而不是期刊专用 `academic-paper` 工作流，除非学校明确给出了期刊/引用格式要求。
 
@@ -28,6 +28,10 @@ OfficeCLI 的核心接口面向 `.docx`；官方技能说明把 `.doc` 列为插
 ```
 
 如果 OfficeCLI 尚未安装或无法处理该模板，不能强行用 `python-docx` 打开 `.doc`；先使用可用的 Office 转换工具，或请用户提供 `.docx` 副本。安装新工具、调用网络服务、覆盖文件均需在实际生成前确认。
+
+### 复杂 DOCX 的保护策略
+
+带有目录域、文本框、浮动图、签名栏、复杂页眉页脚或分节页码的 `.docx`，即使是 `.docx` 也不应被 `python-docx` 整体重建。优先让 Word/LibreOffice/OfficeCLI 在**输出副本**上做局部填充和渲染。`python-docx` 只处理确知不会破坏的段落、表格或插图区域；完成后用 `validate_docx_template.py` 检查保护锚点、版面几何和新增颜色增量。
 
 ## 预检
 
