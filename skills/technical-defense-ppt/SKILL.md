@@ -21,8 +21,8 @@ description: 创建、重构、审稿和渲染技术答辩、项目汇报与毕�
 ## 独立边界
 
 1. 只使用本技能 `references/` 内的规则；不要依赖其他 Skill 的内部证据文件、Word 工具链或章节规则。
-2. 所有结论按 `references/evidence-boundary.md` 回链 Asset ID、数据版本和条件；外部/生成图只能承担情境或解释层。
-3. 流程图、曲线和拓扑按 `references/editable-visuals.md` 保留可编辑源；不要把截图作为唯一源文件。
+2. 所有结论按 `references/evidence-boundary.md` 回链 Asset ID、数据版本和条件；外部/生成图只能承担情境或解释层，并在资产清单中标明生成/原始、用途与限制。
+3. 流程图、曲线和拓扑按 `references/editable-visuals.md` 保留可编辑源；不要把截图作为唯一源文件。技术流程树默认采用黑白可编辑图，可与真实或明确标注为解释用途的彩色图像组合。
 4. 输入、输出和渲染均存于独立 `ppt-workspace/`；不可覆盖用户给出的 `.pptx`。
 5. 仅在用户明确提供报告或桥接包时，才读取 `references/report-handoff.md`；报告是可选输入，不是前置条件。
 
@@ -53,9 +53,9 @@ ppt-workspace/
 
 按 `references/asset-manifest-template.md` 建立资产台账，再按 `references/page-lock-template.md` 锁定每页结论、证据等级、Hero、Support、Finish、版式模式、相邻页差异和讲解节拍。内容页没有锁定卡不得进入排版。
 
-### 阶段 C：视觉系统与可编辑图源
+### 阶段 C：视觉系统、图像组合与可编辑图源
 
-按 `references/design-language.md` 先建立 16:9 母版、色彩 token、网格、字阶和页面语法；按 `references/editable-visuals.md` 制作可编辑拓扑/图表。先校准封面、最难技术页、最强验证页三张；1—3 页短 deck 使用生产系统中的例外。
+按 `references/design-language.md` 先建立 16:9 母版、色彩 token、网格、字阶和页面语法；按 `references/visual-mix-and-finish.md` 为每页指定彩色实物/情境图、黑白技术图与有功能的 Finish；按 `references/editable-visuals.md` 制作可编辑拓扑/图表。先校准封面、最难技术页、最强验证页三张；1—3 页短 deck 使用生产系统中的例外。
 
 ### 阶段 D：构建、渲染与返工
 
@@ -71,6 +71,7 @@ ppt-workspace/
 - `references/asset-manifest-template.md`：资产、视频、页面映射和缺料队列。
 - `references/page-lock-template.md`：每页结论、Hero/Support/Finish 与豁免规则。
 - `references/design-language.md`：色彩、网格、字阶、裁切、视觉语法和反模式。
+- `references/visual-mix-and-finish.md`：彩色图、黑白技术图、生成图及页面修饰元素的组合规则与提示词骨架。
 - `references/editable-visuals.md`：流程图、拓扑、曲线与源文件交付规则。
 - `references/production-system.md`：资产先行、三页校准、逐页渲染生产门。
 - `references/render-delivery.md`：输入保护、渲染、视频备份和交付目录。
