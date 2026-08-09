@@ -1,55 +1,21 @@
 ---
-name: codex-rename
-description: Rename local OpenAI Codex VS Code conversations with a short MCP-first workflow. Use when the user writes "/codex-rename", "/codex rename", asks to rename the current Codex chat/thread/session, batch rename parallel Codex panels from trailing commands, inspect recent rename metadata, or rollback a previous Codex rename. Prefer codex-rename MCP tools and avoid loading long prompt context.
+name: office-skills
+description: Office 文档技能目录。用户要按 Word 模板编写、重构或修订实验/技术报告时路由到 robot-report-suite；用户要新建、修改、逐页审稿或渲染技术答辩/项目汇报 .pptx 时路由到 technical-defense-ppt。报告与 PPT 使用独立工作区，资料、数据、图片和文本先入燃料目录，再生成版本化初版并渲染微调。
 ---
 
-# Codex Rename Skill
+# Office Skills Catalog
 
-Thin trigger layer only. Do not paste or reconstruct the old long prompt. The execution logic lives in the `codex-rename` MCP server and `codex_thread_manager.py`.
+仅选择一个生产入口：
 
-## Preferred path
+- `.docx/.pdf` 报告 → `skills/robot-report-suite/SKILL.md`。
+- `.pptx` 答辩或项目汇报 → `skills/technical-defense-ppt/SKILL.md`。
 
-When available, use the `codex-rename` MCP tools:
+不要创建或安装“报告转 PPT”桥接技能。若两种文档都需要，分别建立 `report-workspace/` 与 `ppt-workspace/`；报告和 PPT 只把对方的定稿副本视为只读资料。
 
-- `codex_rename_help()` for the short workflow and confirmation tokens.
-- `codex_rename_list_threads(limit=1, show_cwd=true)` to identify the most recent VS Code Codex thread.
-- `codex_rename_thread(thread_id, title, dry_run=true, confirm_token="")` before a single-thread write.
-- `codex_rename_hot_thread(..., confirm_token="CONFIRM_CODEX_RENAME_WRITE")` for the currently active VS Code Codex thread: it writes immediately, then schedules a delayed same-title repair pass.
-- `codex_rename_thread(..., confirm_token="CONFIRM_CODEX_RENAME_WRITE")` for inactive/older threads only after the user clearly wants the rename.
-- `codex_rename_schedule_thread(..., confirm_token="CONFIRM_CODEX_RENAME_WRITE")` when only a delayed repair pass is needed.
-- `codex_rename_scan_commands(...)` and `codex_rename_preview_tail_rename(...)` for parallel panels using trailing `/codex rename <title>` commands.
-- `codex_rename_apply_tail_rename(confirm_token="CONFIRM_CODEX_RENAME_WRITE")` only after confirming the batch.
-- `codex_rename_recent(...)` and `codex_rename_rollback(...)` for rollback workflows.
+## 共同交付顺序
 
-## Fallback path
-
-If MCP is unavailable, run `codex_thread_manager.py` directly from this skill directory. Keep the response short and preserve script output lines containing:
-
-- `Backup:`
-- `Recent rename index:`
-- `Rollback command:`
-
-For the **currently active VS Code Codex thread**, preserve the hot-update
-experience but add a delayed repair pass, because a direct metadata rename can
-be overwritten by the still-running Codex process when it saves the current
-turn. Prefer:
-
-```powershell
-python "<skill-dir>\codex_thread_manager.py" hot-rename --id <SESSION_ID> --title "新标题" --delay-seconds 10
-```
-
-This writes immediately so the title can refresh quickly, then schedules a
-same-title repair pass after the assistant turn. If the user explicitly wants
-only the delayed repair pass, use:
-
-```powershell
-python "<skill-dir>\codex_thread_manager.py" schedule-rename --id <SESSION_ID> --title "新标题" --delay-seconds 10
-```
-
-Then tell the user to wait for the delay and run `Developer: Reload Window` or
-restart VS Code/Codex if the UI cache does not update. The scheduled command
-prints a `Log:` path; inspect that log if the title still does not change.
-
-## Safety
-
-This is a local metadata helper, not an official OpenAI UI API. Renames write local Codex metadata and rollout files, so keep backups and remind the user to run `Developer: Reload Window` or restart VS Code/Codex after a successful rename.
+1. 保护模板、原报告、原 PPT 与所有原始资料；不可直接覆盖。
+2. 将图片、日志、数据表、代码说明和文字资料放入各自 `input/fuel/`，建立来源与证据台账。
+3. 报告先锁定模板保留范围与章节卡片；PPT 先锁定每页结论和版式卡。
+4. 输出版本化初版 `v0`，渲染检查后根据反馈输出 `v1`、`v2`……。
+5. 只交付通过格式/渲染/证据检查的版本化文件、源图和审计记录。

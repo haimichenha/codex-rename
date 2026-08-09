@@ -1,154 +1,81 @@
-# codex-rename
+# Office Skills
 
-本地 OpenAI Codex VS Code 对话重命名小工具。
+面向机器人、嵌入式、自动化与技术答辩项目的 Codex Office 文档技能仓库。`main` 是唯一的可用主分支：报告和 PPT 使用各自独立的生产技能、资料工作区与版本化交付物，不再使用“报告转 PPT”桥接技能。
 
-它不是 OpenAI 官方 UI 功能，而是一个保守的本地 metadata helper：重命名前自动备份，写入失败可回滚。
+## 当前技能
 
-## 能做什么
+| 技能 | 适用任务 | 不做什么 |
+| --- | --- | --- |
+| [`robot-report-suite`](skills/robot-report-suite/SKILL.md) | 基于 Word 模板创建、重构和修订 `.docx/.pdf` 实验报告、技术报告与竞赛报告 | 不创建或排版 `.pptx` |
+| [`technical-defense-ppt`](skills/technical-defense-ppt/SKILL.md) | 创建、改版、逐页审稿、渲染和交付答辩/项目汇报 `.pptx` | 不改写 Word 报告 |
 
-- 列出最近的 Codex threads，默认只看 `source = vscode`
-- 重命名指定 thread/session id
-- 同步更新：
-  - `~/.codex/state_5.sqlite` 的 `threads.title`
-  - `~/.codex/session_index.jsonl` 的 `thread_name`
-  - 对应 `rollout-*.jsonl` 追加 `thread_name_updated` 事件
-- 每次重命名前备份相关文件
-- 默认只保留最近 3 个 rename 备份
-- 记录最近 2 次重命名元数据到 `~/.codex/thread-manager/recent-renames.json`
-- 支持按备份目录回滚
-- 支持多个并行 VS Code Codex 面板：扫描各自 rollout 尾部的 `/codex rename 新标题` 并批量重命名
+只有这两个 Office 生产入口。报告需要 PPT 时，将已定稿报告作为 PPT 的**只读材料**；PPT 需要报告修订时，回到报告技能。两者不得覆盖或清理对方工作区。
 
-## 使用
+## 报告：模板 + 资料燃料 → 初版 → 微调
 
-先关闭或 Reload VS Code/Codex 面板会更稳；重命名后也建议执行 `Developer: Reload Window`。
+1. 将原始 Word 模板、原报告和格式要求复制到 `report-workspace/input/`，保持只读并记录哈希。
+2. 将图片、日志、测量表、代码说明、数据 CSV 和文字资料按来源放入 `input/fuel/` 或 `evidence/`；它们是报告的“燃料”，不是可以凭文件名臆测的结论。
+3. 先冻结保留范围：`保留全部模板结构`、`仅保留基础信息页`，或用户明确列出的范围；新资料不会取消已有模板约束。
+4. 建立材料台账、章节卡片、图表清单和 `format-contract.md` 后输出版本化初版 `v0`。
+5. 渲染 `.docx/.pdf` 检查基础信息页、空白、表格、图注、分页和证据回链；把反馈写入差异清单，依次产生 `v1`、`v2`……，不覆盖输入或上一确认版。
 
-```powershell
-python .\codex_thread_manager.py list --limit 5 --show-cwd
-python .\codex_thread_manager.py hot-rename --id <SESSION_ID> --title "新标题"
-python .\codex_thread_manager.py rename --id <SESSION_ID> --title "新标题"
-python .\codex_thread_manager.py schedule-rename --id <SESSION_ID> --title "新标题" --delay-seconds 10
-python .\codex_thread_manager.py scan-rename-commands --limit 20 --show-cwd
-python .\codex_thread_manager.py tail-rename --limit 20 --apply
-python .\codex_thread_manager.py recent --limit 2
-python .\codex_thread_manager.py rollback --backup "<BACKUP_DIR>" --dry-run
-python .\codex_thread_manager.py rollback --backup "<BACKUP_DIR>"
-```
-
-如果设置了自定义 Codex home：
-
-```powershell
-python .\codex_thread_manager.py --codex-home "C:\Users\you\.codex" list --limit 5
-```
-
-## 推荐的 `/codex-rename` 工作流
-
-### 单会话
-
-1. 用户输入 `/codex-rename 新标题`。
-2. 先运行：
-
-   ```powershell
-   python "<repo>\codex_thread_manager.py" list --limit 1 --show-cwd
-   ```
-
-3. 将最近更新时间最高的 `source = vscode` thread 当作当前候选。
-4. 如果是当前正在运行的 VS Code Codex 对话，优先执行热更新：
-
-   ```powershell
-   python "<repo>\codex_thread_manager.py" hot-rename --id <SESSION_ID> --title "新标题"
-   ```
-
-   `hot-rename` 会先立即写入标题，尽量让 UI 快速刷新；同时延迟再写一次同名标题，防止当前活动 Codex 进程在保存本轮对话时把旧标题覆盖回来。
-
-   如果是旧对话/非活动对话，也可以直接执行：
-
-   ```powershell
-   python "<repo>\codex_thread_manager.py" rename --id <SESSION_ID> --title "新标题"
-   ```
-
-5. 输出中保留 `Backup:`、`Recent rename index:` 和 `Rollback command:`。
-6. 提醒用户 Reload Window / 重启 VS Code 刷新缓存。
-
-### 当前活动对话为什么需要 hot-rename
-
-`rename` 是本地 metadata 写入；但当前活动的 Codex VS Code 面板可能仍在内存里持有旧标题，并在下一次保存当前回合时回写旧标题。`hot-rename` 的策略是：
-
-1. 立即写入一次，保留“热更新”体验；
-2. 生成一个隐藏的延迟 PowerShell 任务；
-3. 延迟任务再次写入同一标题，修复活动线程回写旧标题的问题。
-
-延迟脚本使用 UTF-8 with BOM 写入，避免 Windows PowerShell 5.1 把中文标题编码成 `浼樺寲` 这类乱码。
-
-### 多个并行会话
-
-如果同时打开了多个 Codex 面板，不要只依赖“最近一条 thread”。推荐在每个要重命名的对话末尾各自输入一行：
+建议目录：
 
 ```text
-/codex rename 新标题
+report-workspace/
+  input/
+    template/              # 模板、原报告、格式要求（只读副本）
+    fuel/                  # 原始图片、数据、文字资料与代码说明
+  evidence/                # 已核查的日志、照片、测量表与来源说明
+  sections/                # 章节卡片、材料增量台账、风格说明
+  figures/source/          # 可编辑图源
+  figures/export/          # 插入报告的图
+  output/                  # v0、v1… 的 .docx/.pdf
+  qa/                      # 渲染图、格式审计和修订记录
 ```
 
-然后在任意一个 Codex 对话里执行 `/codex-rename`，或手动运行：
+## PPT：资料燃料 → 逐页锁定 → 初版 → 微调
+
+1. 将原 PPT、照片、图表、日志、数据文本和项目资料复制到 `ppt-workspace/input/fuel/`；原 PPT 另存于 `input/original/`，均不可直接覆盖。
+2. 建立资产台账：每份资料标注 Asset ID、版本、能证明什么、不能证明什么和可用页面。
+3. 先规定**每一页**：单页结论、证据等级、Hero、Support、Finish、版式、相邻页差异与讲解节拍，写入 `page-locks/`。没有页面锁定卡不得进入排版。
+4. 按页面顺序构建 `v0`：先校准封面、最难技术页和最强验证页，再完成其余页面。
+5. 每轮导出逐页渲染图与 contact sheet；先修证据和结论，再修阅读路径、裁切和排版，最后做视觉细节。所有微调以 `v1`、`v2`…… 输出，不覆盖原件。
+
+建议目录：
+
+```text
+ppt-workspace/
+  input/
+    original/              # 原 PPT（只读副本）
+    fuel/                  # 图片、视频帧、数据、文本、日志和报告副本
+  brief/                   # 受众、时长、主线与限制
+  assets/                  # 资产台账与证据边界
+  page-locks/              # 每页结论、内容与版式锁定卡
+  source/                  # 可编辑图表、拓扑、讲稿和 PPT 源
+  output/                  # v0、v1… 的 .pptx/.pdf
+  render/                  # 单页渲染图与 contact sheet
+  qa/                      # 审稿、评分和修订记录
+```
+
+## 分支说明
+
+| 分支 | 状态 | 用途 |
+| --- | --- | --- |
+| `main` | **生产分支** | 当前唯一安装与使用来源；包含两个独立 Office 技能及其模板/渲染/质检规则。 |
+| `feature/split-report-ppt-skills` | 历史整合分支 | 用于开发阶段比对；含已弃用的 `robot-report-to-ppt-bridge`，不要安装。 |
+| `feature/robot-report-build-skill` | 历史分支 | 报告技能早期开发记录。 |
+| `feature/technical-defense-ppt-skill` | 历史分支 | PPT 技能早期开发记录。 |
+| `feature/codex-provider-switch` | 历史/非 Office 分支 | 与 Office 文档生产无关，不作为本仓库的安装入口。 |
+
+## 安装或同步到 Codex
+
+克隆主分支后，仅复制这两个目录到 `%USERPROFILE%\.codex\skills\`：
 
 ```powershell
-python "<repo>\codex_thread_manager.py" scan-rename-commands --limit 20 --show-cwd
-python "<repo>\codex_thread_manager.py" tail-rename --limit 20 --apply
+git clone --branch main https://github.com/haimichenha/office-skills.git
+Copy-Item -Recurse -Force .\office-skills\skills\robot-report-suite "$env:USERPROFILE\.codex\skills\robot-report-suite"
+Copy-Item -Recurse -Force .\office-skills\skills\technical-defense-ppt "$env:USERPROFILE\.codex\skills\technical-defense-ppt"
 ```
 
-`tail-rename` 会按每个 thread 自己 rollout 尾部的用户命令解析新标题；当前标题已经一致的会跳过。
-
-复杂历史管理、标签、备注、归档建议交给 Codex History Viewer、CC Switch 等插件。
-
-## 风险说明
-
-这是本地 metadata hack，不是 OpenAI 官方 VS Code UI 功能。Codex 本地存储结构未来可能变化。使用前请确认脚本输出的候选 thread 是你想改的对话，并保留备份。
-
-## MCP mode (short-context path)
-
-This repo can also run as a small MCP server so Codex/Claude/VS Code do not need to load the long prompt file.
-
-Register `server.py` as a stdio MCP named `codex-rename`:
-
-```json
-{
-  "mcpServers": {
-    "codex-rename": {
-      "type": "stdio",
-      "command": "D:\\Vs Code\\MSPM0\\lidarMSP\\.venv\\Scripts\\python.exe",
-      "args": [
-        "C:\\Users\\chenha\\.codex\\skills\\codex-rename\\server.py"
-      ],
-      "env": {
-        "PYTHONIOENCODING": "utf-8"
-      }
-    }
-  }
-}
-```
-
-Available tools:
-
-- `codex_rename_help()` — short workflow summary and confirmation tokens.
-- `codex_rename_list_threads(...)` — read-only recent thread list.
-- `codex_rename_scan_commands(...)` — read-only scan for trailing `/codex rename 新标题` commands.
-- `codex_rename_preview_tail_rename(...)` — dry-run batch rename preview.
-- `codex_rename_apply_tail_rename(...)` — write batch rename; requires `CONFIRM_CODEX_RENAME_WRITE`.
-- `codex_rename_thread(...)` — rename one thread; non-dry-run requires `CONFIRM_CODEX_RENAME_WRITE`.
-- `codex_rename_hot_thread(...)` — active-thread friendly hot rename; immediate write + delayed repair pass; requires `CONFIRM_CODEX_RENAME_WRITE`.
-- `codex_rename_schedule_thread(...)` — delayed repair-only rename; requires `CONFIRM_CODEX_RENAME_WRITE`.
-- `codex_rename_recent(...)` — read recent rename metadata.
-- `codex_rename_rollback(...)` — dry-run by default; real rollback requires `CONFIRM_CODEX_RENAME_ROLLBACK`.
-
-The MCP is intentionally a thin wrapper around `codex_thread_manager.py`; it preserves backups and rollback behavior while keeping the model context small.
-
-Note: the old `prompts/codex-rename.md` slash-prompt entry was removed after MCP support was added. Codex should use the MCP tools directly instead of injecting the old long prompt context.
-
-## Skill architecture
-
-The installed Codex skill is intentionally thin:
-
-- `SKILL.md` is only the trigger/routing layer.
-- `server.py` exposes MCP tools for normal use.
-- `codex_thread_manager.py` keeps deterministic local metadata operations, backups, and rollback.
-- The old long prompt entry under `~/.codex/prompts/codex-rename.md` should stay disabled; otherwise Codex may inject the long prompt context instead of using MCP.
-
-For Codex usage, prefer the skill trigger + MCP tools. Do not recreate the old prompt-based workflow.
+随后执行 VS Code 的 **Developer: Reload Window**，让技能列表重新加载。不要复制历史分支中的桥接技能。
