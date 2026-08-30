@@ -11,3 +11,7 @@ __pycache__/
 thread-manager/
 recent-renames.json
 codex-thread-rename-backup-*/
+
+# Generated resume workspaces and render output
+resume-workspace/
+resume-workspace-*/
