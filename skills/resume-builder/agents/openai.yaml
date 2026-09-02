@@ -1,4 +1,4 @@
 interface:
   display_name: "简历制作"
-  short_description: "基于模板、资料与照片制作校招和实习简历并完成 PDF 质检"
-  default_prompt: "使用 $resume-builder 基于我的模板、项目资料和照片制作一页简历，导出 PDF 并检查版式。"
+  short_description: "基于用户认可母版、资料与照片制作简历，保留细节并完成 PDF 质检"
+  default_prompt: "使用 $resume-builder 基于我认可的简历母版、项目资料和照片微调一页简历，保留详细项目职责，导出 PDF 并检查版式。"
