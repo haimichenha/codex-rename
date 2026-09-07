@@ -35,8 +35,8 @@ python .\skills\resume-builder\scripts\check_resume_pdf.py D:\resume-workspace\o
 ## 安装到 Codex
 
 ```powershell
-git clone --branch main https://github.com/haimichenha/resume-skills.git
-Copy-Item -Recurse -Force .\resume-skills\skills\resume-builder "$env:USERPROFILE\.codex\skills\resume-builder"
+git clone --branch main https://github.com/haimichenha/office-skills.git
+Copy-Item -Recurse -Force .\office-skills\skills\resume-builder "$env:USERPROFILE\.codex\skills\resume-builder"
 ```
 
 随后执行 VS Code 的 **Developer: Reload Window**。
